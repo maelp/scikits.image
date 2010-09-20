@@ -21,8 +21,11 @@ def imread(fname, as_grey=False, dtype=None):
             im = im.convert('RGB')
 
     if as_grey and not \
-           im.mode in ('1', 'L', 'I', 'F', 'I;16', 'I;16L', 'I;16B'):
+           im.mode in ('1', 'L', 'I', 'F', 'I;16', 'I;16L', 'I;16B', 'LA'):
         im = im.convert('F')
+
+    if 'A' in im.mode:
+        im = im.convert('RGBA')
 
     return np.array(im, dtype=dtype)
 
@@ -92,3 +95,18 @@ def imsave(fname, arr):
 
     img = Image.fromstring(mode, (arr.shape[1], arr.shape[0]), arr.tostring())
     img.save(fname)
+
+def imshow(arr):
+    """Display an image, using PIL's default display command.
+
+    Parameters
+    ----------
+    arr : ndarray
+       Image to display.  Images of dtype float are assumed to be in
+       [0, 1].  Images of dtype uint8 are in [0, 255].
+
+    """
+    if np.issubdtype(arr.dtype, float):
+        arr = (arr * 255).astype(np.uint8)
+
+    Image.fromarray(arr).show()
