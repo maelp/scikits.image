@@ -14,4 +14,4 @@ build
 dist
 scikits/image/version.py
 *.swp
-
+!scikits/image/filter/c_src/*.c
