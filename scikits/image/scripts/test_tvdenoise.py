@@ -25,7 +25,7 @@ if len(sys.argv) > 1:
     W = args.W
 else:
     filename = os.path.join(data_dir, 'lena256.tif')
-     n = 10
+    n = 10
     W = 50.0
 
 im = imread(filename)
