@@ -3,7 +3,7 @@ cimport numpy as np
 import scikits.image.utils.shapes as shapes
 
 cdef extern from "c_src/c_median.c":
-  int c_median_iteration(unsigned char*, int, int, unsigned char*, int*, int)
+    int c_median_iteration(unsigned char*, int, int, unsigned char*, int*, int)
 
 def median(im, selem=None, r=1.0, n=1):
     """
@@ -59,19 +59,20 @@ def median(im, selem=None, r=1.0, n=1):
         w = np.zeros_like(contim)
     else:
         w = None
-
     # Number of pixels changed in the current iteration
     cdef int n_changed = 1
     cdef np.ndarray[np.uint8_t] src = contim
     i = 0
     while i < n:
         if src is not contim:
-        src[:] = v
-        n_changed = c_median_iteration(<unsigned char *>src.data, nx, ny, <unsigned char *>v.data, <int *>contshapec.data, len(shapec)/2)
+            src[:] = v
+            n_changed = c_median_iteration(<unsigned char *>src.data, \
+                nx, ny, <unsigned char *>v.data, <int *>contshapec.data, \
+                                    len(shapec)/2)
     #    print "iteration {0}: {1} grey level(s) modified".format(i+1, n_changed)
         src = w
         if n_changed == 0:
-        break
+            break
         i += 1
 
     #  if n_changed == 0:
