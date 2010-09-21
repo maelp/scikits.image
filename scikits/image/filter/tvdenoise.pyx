@@ -8,10 +8,10 @@ def tvdenoise(arr, int niter=10, float W=50.0):
     """
     Perform total-variation denoising on a float32 array
 
-        Parameters
-        ----------
-        arr: ndarray
-            input data to be denoised
+    Parameters
+    ----------
+    arr: ndarray
+        input data to be denoised
 
     niter: int, optional
         number of iterations
@@ -26,11 +26,8 @@ def tvdenoise(arr, int niter=10, float W=50.0):
     
     Examples
     --------
-    >>> import os
-    >>> from scikits.image import data_dir
-    >>> from scikits.image.io import imread
-
-    >>> lena = imread(os.path.join(data_dir, 'lena256.tif'))
+    >>> import scipy
+    >>> lena = scipy.lena()
     >>> lena_denoised = tvdenoise(lena, niter=5)
     """
     if len(arr.shape) != 2:
@@ -38,7 +35,7 @@ def tvdenoise(arr, int niter=10, float W=50.0):
     cdef int nx = arr.shape[0]
     cdef int ny = arr.shape[1]
 
-    cdef np.ndarray[np.float32_t] flat_arr = arr.ravel()
+    flat_arr = arr.ravel()
     cdef np.ndarray[np.float32_t, mode='c'] contarr
     try:
         contarr = flat_arr
