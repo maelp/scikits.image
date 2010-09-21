@@ -30,3 +30,7 @@
 
 - Almar Klein
   Binary heap class for graph algorithms
+
+- Maël Primet
+  Reimplementation of Megawave's various signal and image processing algorithms
+
