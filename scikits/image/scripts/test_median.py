@@ -27,5 +27,5 @@ else:
 
 im=imread(filename)
 imshow(im)
-im2=median(im, n=n, r=r)
+im2=median(im, radius=r, niter=n)
 imshow(im2)
