@@ -48,9 +48,9 @@ def tvdenoise(arr, int niter=10, float W=50.0):
         contarr = flat_arr.astype(np.float32)
     cdef np.ndarray[np.float32_t] out = np.zeros_like(contarr)
 
-    err_code = c_tvdenoise_float(<float *>contarr.data, nx, ny,
-        niter, W, <float *> out.data)
+    err_code = c_tvdenoise_float(<float *> contarr.data, nx, ny,
+                            niter, W, <float *> out.data)
     if err_code != 0:
-        raise RuntimeError('c_tvdenoise exited with code '+ str(err_code))
+        raise RuntimeError('c_tvdenoise exited with code ' + str(err_code))
 
     return out.reshape((nx, ny))

@@ -15,10 +15,12 @@ def median(im, selem=None, radius=1.0, niter=1):
         input data to be denoised
 
     selem : structuring element, optional
-        structuring element to use when denoising, or None for a disc of radius r
+        structuring element to use when denoising, or None for a disc 
+        of radius r
 
     radius : float, optional
-        if selem is None, this is the radius of the disc element used when denoising
+        if selem is None, this is the radius of the disc element used 
+        when denoising
 
     niter : int, optional
         number of filtering iterations
@@ -30,18 +32,15 @@ def median(im, selem=None, radius=1.0, niter=1):
     
     Notes
     -----
-    The structuring element is a two-dimensional array containing non-null values
-    on the points included in the element (the center is assumed to be the point
-    at (width/2, height/2)).
+    The structuring element is a two-dimensional array containing non-null 
+    values on the points included in the element (the center is assumed to 
+    be the point at (width/2, height/2)).
 
     Examples
     --------
-    >>> import os
-    >>> from scikits.image import data_dir
-    >>> from scikits.image.io import imread
-
-    >>> lena = imread(os.path.join(data_dir, 'lena256.tif'))
-    >>> lena_denoised = median(lena, niter=5)
+    >>> import scipy
+    >>> lena = scipy.lena()
+    >>> lena_denoised = median(lena.astype(np.uint8), niter=5)
     """
     if radius <= 0.0:
         raise ValueError('radius should be > 0')
@@ -85,9 +84,8 @@ def median(im, selem=None, radius=1.0, niter=1):
     while i < niter:
         if src is not contim:
             src[:] = v
-        n_changed = c_median_iteration(<unsigned char *>src.data, nx, ny,
-            <unsigned char *>v.data, <int *>contshapec.data, len(shapec)/2)
-#    print "iteration {0}: {1} grey level(s) modified".format(i+1, n_changed)
+        n_changed = c_median_iteration(<unsigned char *> src.data, nx, ny,
+            <unsigned char *> v.data, <int *>contshapec.data, len(shapec) / 2)
         src = w
         if n_changed == 0:
             break
