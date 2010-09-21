@@ -5,7 +5,7 @@ def configuration(parent_package='', top_path=None):
 
     config = Configuration('image', parent_package, top_path)
 
-#    config.add_subpackage('opencv')
+    config.add_subpackage('opencv')
     config.add_subpackage('utils')
     config.add_subpackage('filter')
     config.add_subpackage('graph')
