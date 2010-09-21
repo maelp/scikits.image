@@ -31,7 +31,7 @@ else:
 im=imread(filename)
 imshow(im)
 im=np.array(im, dtype=np.float32)
-im2=tvdenoise.tvdenoise_float32(im, n, W)
+im2=tvdenoise(im, n, W)
 
 def view_float(im):
   m = np.min(im)
