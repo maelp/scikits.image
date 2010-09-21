@@ -80,8 +80,7 @@ def median(im, selem=None, radius=1.0, niter=1):
     # Number of pixels changed in the current iteration
     cdef int n_changed = 1
     cdef np.ndarray[np.uint8_t] src = contim
-    i = 0
-    while i < niter:
+    for i in xrange(niter):
         if src is not contim:
             src[:] = v
         n_changed = c_median_iteration(<unsigned char *> src.data, nx, ny,
@@ -89,6 +88,5 @@ def median(im, selem=None, radius=1.0, niter=1):
         src = w
         if n_changed == 0:
             break
-        i += 1
 
     return v.reshape((nx, ny))
