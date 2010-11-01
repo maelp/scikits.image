@@ -200,8 +200,8 @@ class SplineZoom(object):
         return zoom.fzoom(im, self.order, x, y, w, h, scale, bgcolor)
 
 # Utility function that converts an image to float32 when required
-def _ensures_float(im):
-    if not np.issubdtype(im.dtype, float):
+def _ensures_float32(im):
+    if not np.issubdtype(im.dtype, np.float32):
         return im.astype(np.float32)
     else:
         return im
@@ -244,14 +244,14 @@ class ImageRenderer(object):
             self.width = self.height = 0
         else:
             if image.ndim == 2:
-                self.planes = [_ensures_float(image)]
+                self.planes = [_ensures_float32(image)]
             elif image.ndim == 3:
                 if image.shape[2] == 1:
-                    self.planes = [_ensures_float(image[:,:,0])]
+                    self.planes = [_ensures_float32(image[:,:,0])]
                 elif image.shape[2] == 3 or image.shape[2] == 4:
-                    imageR = _ensures_float(image[:,:,0])
-                    imageG = _ensures_float(image[:,:,1])
-                    imageB = _ensures_float(image[:,:,2])
+                    imageR = _ensures_float32(image[:,:,0])
+                    imageG = _ensures_float32(image[:,:,1])
+                    imageB = _ensures_float32(image[:,:,2])
                     self.planes = [imageR, imageG, imageB]
                 else:
                     raise ValueError('Invalid number of planes')
