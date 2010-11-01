@@ -3,9 +3,9 @@ cimport numpy as np
 cimport cython
 
 cdef extern from "c_src/c_nlmeans.c":
-    int c_nlmeans(float *, float *, int, int, float, int, float, int, float, unsigned char *, int, int)
+    int c_nlmeans(float *, float *, int, int, float, int, float, int, float)
 
-def nlmeans(arr, float h=10.0, int s=7, a=None, int d=10, float c=1.0, mask=None):
+def nlmeans(arr, float h=10.0, int s=7, a=None, int d=10, float c=1.0):
     """
     Perform the non-local means filter
 
@@ -28,9 +28,6 @@ def nlmeans(arr, float h=10.0, int s=7, a=None, int d=10, float c=1.0, mask=None
 
     c: float, optional
        weight for self-patch
-
-    mask: ndarray, optional
-          do not denoise pixels x with mask(x) == 0
 
     Returns
     -------
@@ -57,24 +54,12 @@ def nlmeans(arr, float h=10.0, int s=7, a=None, int d=10, float c=1.0, mask=None
     if a is None:
         a = float(s-1)/4.0
 
-    cdef int mx=0, my=0
-    cdef unsigned char *pmask = cython.NULL
-    cdef np.ndarray[np.uint8_t, mode='c'] fmask
-    if mask is not None:
-        if len(mask.shape) != 2:
-            raise ValueError('mask should be a 2d-array')
-        else:
-            mx, my = mask.shape[0], mask.shape[1]
-            flat_mask = mask.ravel()
-            fmask = flat_mask.astype(np.uint8)
-            pmask = <unsigned char *>fmask.data
-
     flat_arr = arr.ravel()
     cdef np.ndarray[np.float32_t, mode='c'] contarr = flat_arr.astype(np.float32)
     cdef np.ndarray[np.float32_t] out = np.zeros_like(contarr)
 
     err_code = c_nlmeans(<float *>contarr.data, <float *>out.data, nx, ny,
-            h, s, <float>a, d, c, <unsigned char *>pmask, mx, my)
+            h, s, <float>a, d, c)
     if err_code == -1:
         raise ValueError('Parameter error')
     elif err_code == 1:

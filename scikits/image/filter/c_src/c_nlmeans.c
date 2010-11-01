@@ -12,8 +12,7 @@ c_nlmeans(
         int s,   /* patch side length (odd integer) */
         float a, /* decay of Euclidean patch distance */
         int d,   /* maximum patch distance */
-        float c, /* weight for self-patch */
-        unsigned char *mask, int mx, int my /* do not denoise pixels x with mask(x) = 0 */
+        float c /* weight for self-patch */
 )
 {
   int *dadr=NULL,*dd=NULL,nx,ny,x,y,xp,yp,i,adr,adrp,wsize,ds;
@@ -70,27 +69,24 @@ c_nlmeans(
       for (y=ds;y<ny-ds;y++)
       {
           adr = y*nx+x;
-          if (!mask || mask[adr])
+          new = sum = 0.;
+          /* loop on patches */
+          for (xp=MAX(x-d,ds);xp<=MIN(x+d,nx-1-ds);xp++)
           {
-              new = sum = 0.;
-              /* loop on patches */
-              for (xp=MAX(x-d,ds);xp<=MIN(x+d,nx-1-ds);xp++)
+              for (yp=MAX(y-d,ds);yp<=MIN(y+d,ny-1-ds);yp++)
               {
-                  for (yp=MAX(y-d,ds);yp<=MIN(y+d,ny-1-ds);yp++)
+                  adrp = yp*nx+xp;
+                  for (i=wsize,dist=0.,ww=w,dd=dadr;i--;ww++,dd++)
                   {
-                      adrp = yp*nx+xp;
-                      for (i=wsize,dist=0.,ww=w,dd=dadr;i--;ww++,dd++)
-                      {
-                          v = ref[adr+*dd]-ref[adrp+*dd];
-                          dist += *ww*v*v;
-                      }
-                      e = (adrp==adr?c:exp(-dist));
-                      new += e*(double)ref[adrp];
-                      sum += e;
+                      v = ref[adr+*dd]-ref[adrp+*dd];
+                      dist += *ww*v*v;
                   }
+                  e = (adrp==adr?c:exp(-dist));
+                  new += e*(double)ref[adrp];
+                  sum += e;
               }
-              out[(y-ds)*nx0+x-ds] = (float)(new/sum);
           }
+          out[(y-ds)*nx0+x-ds] = (float)(new/sum);
       }
   }
   free(ref);
