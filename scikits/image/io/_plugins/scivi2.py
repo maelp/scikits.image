@@ -11,6 +11,8 @@ from scikits.image.io._plugins import _scivi2_utils as utils
 
 # TODO
 # HIGH PRIORITY
+# - there is a bug when flipping images, sometimes the view are uncorrelated (maybe
+#   after zooming?), should try to investigate this bug
 # - force translations to be an integer number*zoom, thus we do not have subpixel
 #   translations when zooming in or out (this can be annoying when zooming out, often
 #   we will zoom back to 1.0X with a +0.5 translation)
@@ -335,11 +337,19 @@ class ImageRenderer(object):
                 # if intersection.area() < thresh:
                 #     return render_all()
 
+                print "h=",h,"w=",w
                 out = np.empty((h,w,3), dtype=np.uint8)
 
                 a, b, s, t = intersection.coords() # in cache coords
                 c, d = a-i_x, b-i_y # in out coords
                 out[d:d+t, c:c+s, :] = self.cache[b:b+t, a:a+s, :]
+
+                print "prev=", prev.coords()
+                print "next=", next.coords()
+                print "intersect=",intersection.coords()
+                print "diffs:"
+                for diff in difference_list:
+                    print "  ",diff.coords()
 
                 for diff in difference_list:
                     a, b, s, t = diff.coords() # in cache coords

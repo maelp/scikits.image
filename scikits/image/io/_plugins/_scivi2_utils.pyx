@@ -108,8 +108,9 @@ cdef class IntBox(object):
         respectively in the plane (X <= x) or (X > x)
         """
         a, b, s, t = self.coords()
+        x0 = max(x+1, a)
         return (IntBox(a, b, min(s, x-a+1), t),
-                IntBox(x+1, b, a+s-x-1, t))
+                IntBox(x0, b, a+s-x0, t))
 
     def split_vert(self, int y):
         """
@@ -117,6 +118,7 @@ cdef class IntBox(object):
         respectively in the plane (Y <= y) or (Y > y)
         """
         a, b, s, t = self.coords()
+        y0 = max(y+1, b)
         return (IntBox(a, b, s, min(t, y-b+1)),
-                IntBox(a, y+1, s, b+t-y-1))
+                IntBox(a, y0, s, b+t-y0))
 
