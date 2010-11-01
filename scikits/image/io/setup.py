@@ -17,6 +17,8 @@ def configuration(parent_package='', top_path=None):
     # it fails, we build the checked-in .c files.
     cython(['_plugins/_colormixer.pyx', '_plugins/_histograms.pyx'],
            working_path=base_path)
+    cython(['_plugins/_scivi2_utils.pyx'],
+           working_path=base_path)
 
     config.add_extension('_plugins._colormixer',
                          sources=['_plugins/_colormixer.c'],
@@ -24,6 +26,10 @@ def configuration(parent_package='', top_path=None):
 
     config.add_extension('_plugins._histograms',
                          sources=['_plugins/_histograms.c'],
+                         include_dirs=[get_numpy_include_dirs()])
+
+    config.add_extension('_plugins._scivi2_utils',
+                         sources=['_plugins/_scivi2_utils.c'],
                          include_dirs=[get_numpy_include_dirs()])
 
     return config
