@@ -636,9 +636,6 @@ class Controls(QWidget):
                 self.flip.state = None
             viewer.dirty = True
             viewer.repaint()
-        elif c == Qt.Key_Q:
-            # Close
-            self.close()
 
 class AdvancedImageViewerApp(QMainWindow):
     def __init__(self, im, flip=None, mgr=None):
@@ -666,6 +663,16 @@ class AdvancedImageViewerApp(QMainWindow):
         controls.setViewer(viewer)
         controls.setImageRenderer(im_renderer, flip=flip_renderer)
         self.setCentralWidget(controls)
+        controls.show()
+
+    def keyPressEvent(self, event):
+        c = event.key()
+
+        if c == Qt.Key_Q:
+            # Close
+            self.close()
+        else:
+            self.centralWidget().keyPressEvent(event)
 
     def closeEvent(self, event):
         # Allow window to be destroyed by removing any
@@ -675,7 +682,7 @@ class AdvancedImageViewerApp(QMainWindow):
 
 def _simple_imshow(im, flip=None, mgr=None):
     # TODO: simpler imshow, without complete GUI
-    return _advanced_imshow(im, flip)
+    return _advanced_imshow(im, flip=flip, mgr=mgr)
 
 def _advanced_imshow(im, flip=None, mgr=None):
     return AdvancedImageViewerApp(im, flip=flip, mgr=mgr)
