@@ -1,0 +1,4 @@
+If there is an error "Compiler crash in IntroduceBufferAuxiliaryVars"
+it is probably because of np.ndarray[np.float32] instead of np.ndarray[np.float32_t]
+definitions in the code
+

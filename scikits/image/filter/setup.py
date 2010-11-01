@@ -17,6 +17,7 @@ def configuration(parent_package='', top_path=None):
     cython(['tvdenoise.pyx'], working_path=base_path)
     cython(['shock.pyx'], working_path=base_path)
     cython(['nlmeans.pyx'], working_path=base_path)
+    cython(['perdecomp.pyx'], working_path=base_path)
 
     config.add_extension('median', sources=['median.c'],
                          include_dirs=[get_numpy_include_dirs()])
@@ -25,6 +26,8 @@ def configuration(parent_package='', top_path=None):
     config.add_extension('shock', sources=['shock.c'],
                          include_dirs=[get_numpy_include_dirs()])
     config.add_extension('nlmeans', sources=['nlmeans.c'],
+                         include_dirs=[get_numpy_include_dirs()])
+    config.add_extension('perdecomp', sources=['perdecomp.c'],
                          include_dirs=[get_numpy_include_dirs()])
 
     return config

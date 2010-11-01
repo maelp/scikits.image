@@ -59,9 +59,8 @@ def nlmeans(arr, float h=10.0, int s=7, a=None, int d=10, float c=1.0):
     cdef np.ndarray[np.float32_t] out = np.zeros_like(contarr)
 
     err_code = 0
-    with nogil:
-        err_code = c_nlmeans(<float *>contarr.data, <float *>out.data, nx, ny,
-                h, s, <float>a, d, c)
+    err_code = c_nlmeans(<float *>contarr.data, <float *>out.data, nx, ny,
+            h, s, <float>a, d, c)
     if err_code == -1:
         raise ValueError('Parameter error')
     elif err_code == 1:
