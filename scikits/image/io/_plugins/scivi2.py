@@ -10,19 +10,37 @@ from scikits.image.transform import zoom
 from scikits.image.io._plugins import _scivi2_utils as utils
 
 # TODO
-# - multicore if available
+# HIGH PRIORITY
+# - force translations to be an integer number*zoom, thus we do not have subpixel
+#   translations when zooming in or out (this can be annoying when zooming out, often
+#   we will zoom back to 1.0X with a +0.5 translation)
+# - when zooming out and the image fits the view, we should center it
+# - we should have fit zoom, zoom 1.0, reinit zoom,
+# - multicore if available (use _plugins.util)
+# - the application should have an F10 shortcut to display zoom/histo/etc controls
+#
+# LOW PRIORITY
 # - find some better way to tell the ImageRenderer to reset its state when
 #   the rendering changes (we change the zoom, the rendering of level-lines, etc)
 #   rather than setting image_renderer.state = None
 # - check that the subimages that we extract before we zoom are the minimal
 #   subimages that should be extracted for each zoom
 # - reduce copying of image by using the ndarray C interface directly in the
-#   zoom code
-# - force translations to be an integer number*zoom, thus we do not have subpixel
-#   translations when zooming in or out (this can be annoying when zooming out, often
-#   we will zoom back to 1.0X with a +0.5 translation)
-# - F10 key should show additionnal controls
+#   zoom code (eg. we don't necessarily have to ensure the image is contiguous)
+# - we should have rectangle zoom (eg. ctrl+click makes it possible to define a
+#   rectangle, and the zoom/panning is computed to fit this rectangle in the view)
+# - the application should have an F11 shortcut to display a python interpreter
+#   with numpy and scikits.image already loaded
+# - we should perhaps cache the zoomed image that was last rendered, if we want to
+#   have fast color rescaling (eg. change hue/contrast, but do not recompute zoom
+#   each time)
+# - allow non-uniform zoom (this is easy, we only have to add a zoom_x and zoom_y
+#   parameter in the C code, those values are already used inside the code for
+#   zooming, we should adapt all python code with scale_x and scale_y rather than
+#   scale, but it isn't obvious whether this will really have an use)
 
+# Suggested application design
+#
 #   ImageViewer: the control that acts on the view, handles 
 #     - it should have viewChanged etc signals
 #   BasicImageViewer: handles mouse for basic operations (zoom in, zoom out, 1:1,
@@ -31,14 +49,6 @@ from scikits.image.io._plugins import _scivi2_utils as utils
 #     - key press can have an action on the ImageViewer, etc
 #     - handles flip, etc
 #     - histograms, color modes, levels etc
-#   The application should have an F10 shortcut to display zoom/histo/etc controls
-#   and an F11 shortcut to display a python interpreter with numpy and scikits.image
-#   already loaded
-#   - When zooming out and the image fits the view, we should center it
-#   - We should have fit zoom, zoom 1.0, reinit zoom, rectangle zoom
-#   - We should have some utility imshow(im) function that gives some basic
-#   viewer, or imshow(im, mode='advanced') that gives some full-fledged advanced
-#   viewer
 #   - Extending the Viewer should be very easy (either include it in a QGraphicsView,
 #     or have some way to easily extend it to permit to input points, etc)
 
@@ -56,9 +66,9 @@ from scikits.image.io._plugins import _scivi2_utils as utils
 #  - integer/real images
 #  - image flip
 #  - level lines (one level, several lines, upper/lower sets, range)
-#  - configurable ImageRenderer with preprocessing, processing, postprocessing
-#######################
+#  - configurable ImageRenderer
 
+# Utility function for zoom windows
 def _extract_subwindow_with_border(im, x, y, w, h, scale, border=1):
     # If we need p border pixels, we should have the subimage
     # [ ceil(x)-p, floor(x+(w-1)/scale)+p ]
@@ -73,6 +83,10 @@ class NearestZoom(object):
         return "NearestZoom"
 
     def subwindow(self, im, x, y, w, h, scale):
+        """
+        Extract the minimal subwindow of im required to compute the
+        requested (x, y, w, h, scale) zoom
+        """
         x1 = max(0, np.ceil(x-0.5)-1)
         y1 = max(0, np.ceil(y-0.5)-1)
         x2 = min(im.shape[1]-1.0, np.ceil(x+(w-1)/scale-0.5)+1)
@@ -99,6 +113,10 @@ class BilinearZoom(object):
         return "BilinearZoom"
 
     def subwindow(self, im, x, y, w, h, scale):
+        """
+        Extract the minimal subwindow of im required to compute the
+        requested (x, y, w, h, scale) zoom
+        """
         return _extract_subwindow_with_border(im, x, y, w, h, scale, 2)
 
     def render(self, im, x, y, w, h, scale, bgcolor):
@@ -121,6 +139,10 @@ class BicubicZoom(object):
         return "CubicZoom"
 
     def subwindow(self, im, x, y, w, h, scale):
+        """
+        Extract the minimal subwindow of im required to compute the
+        requested (x, y, w, h, scale) zoom
+        """
         return _extract_subwindow_with_border(im, x, y, w, h, scale, 3)
 
     def render(self, im, x, y, w, h, scale, bgcolor):
@@ -147,6 +169,10 @@ class SplineZoom(object):
         return "SplineZoom("+str(self.order)+")"
 
     def subwindow(self, im, x, y, w, h, scale):
+        """
+        Extract the minimal subwindow of im required to compute the
+        requested (x, y, w, h, scale) zoom
+        """
         return _extract_subwindow_with_border(im, x, y, w, h, scale, (1+self.order)/2+1)
 
     def render(self, im, x, y, w, h, scale, bgcolor):
@@ -164,6 +190,7 @@ class SplineZoom(object):
         """
         return zoom.fzoom(im, self.order, x, y, w, h, scale, bgcolor)
 
+# Utility function that converts an image to float32 when required
 def _ensures_float(im):
     if not np.issubdtype(im.dtype, float):
         return im.astype(np.float32)
@@ -196,6 +223,9 @@ class ImageRenderer(object):
         self.zoom = zoom # Zoom to use
 
         self.rescale = None # Rescale images
+        # TODO
+        # Not used right now, should enable to set the desired range
+        # to display (particularly for float images)
 
         self.show_level_lines = False # Display level-lines
 
@@ -285,9 +315,12 @@ class ImageRenderer(object):
             else:
                 difference_list = next.difference(prev)
 
-                # XXX if the common part is really small compared to the whole area
+                # TODO
+                #
+                # if the common part is really small compared to the whole area
                 # to render, perhaps it is more efficient to render the whole picture
                 # rather than rendering parts, and the copying
+                #
                 # eg.
                 # if intersection.area()/next.area() < thresh:
                 #     return render_all()
@@ -328,7 +361,6 @@ class ImageRenderer(object):
             w = w+1
             h = h+1
 
-        #print "_force_render("+str(w)+", "+str(h)+")"
         if self.planes is None or w == 0 or h == 0:
             return np.empty((0,0))
         else:
@@ -549,6 +581,9 @@ class MouseImageViewer(ImageViewer):
                 self.scale /= 2.0
             self.pan_x = dx + wx/self.scale
             self.pan_y = dy + wy/self.scale
+            # TODO
+            # should signal pan/zoom change
+            # eg. emit self.viewChanged(...)
             self.dirty = True
             self.repaint()
 
@@ -566,40 +601,90 @@ class Controls(QWidget):
         layout = QVBoxLayout()
         layout.addWidget(viewer)
         self.viewer = viewer
+        # TODO: should respond to viewChanged signal of self.viewer,
+        # in order to force centering the view if it fits the viewer
         self.setLayout(layout)
 
     def setImageRenderer(self, image_renderer, flip=None):
         if self.viewer is not None:
             self.viewer.setImageRenderer(image_renderer)
             self.flip = flip
+
+    def _is_view_fitting(self):
+        if self.viewer is not None:
+            viewer = self.viewer
+            ir = viewer.image_renderer
+            if ir is not None:
+                w, h = ir.width, ir.height
+                scale = viewer.scale
+                real_width = int(np.ceil(w*scale))
+                real_height = int(np.ceil(h*scale))
+                return real_width <= viewer.width() and real_height <= viewer.height()
+            else:
+                return False
+        else:
+            return False
+    def _fit_view(self):
+        if self.viewer is not None:
+            viewer = self.viewer
+            ir = viewer.image_renderer
+            if ir is not None:
+                w, h = ir.width, ir.height
+                scale = viewer.scale
+                real_width = int(np.ceil(w*scale))
+                real_height = int(np.ceil(h*scale))
+                widget_width = viewer.width()
+                widget_height = viewer.height()
+                if real_width <= widget_width:
+                    viewer.pan_x = (widget_width-real_width)/scale/2
+                if real_height <= widget_height:
+                    viewer.pan_y = (widget_height-real_height)/scale/2
+
+    def resizeEvent(self, event):
+        self._fit_view()
+        viewer.dirty = True
+
+    def pan(self, dx=0.0, dy=0.0):
+        # TODO: check whether the picture is fitting in the image,
+        #       if this is the case, center it
+        viewer = self.viewer
+        viewer.pan_x += dx
+        viewer.pan_y += dy
+        self._fit_view()
+        viewer.dirty = True
+
+    def zoom(self, scale):
+        viewer = self.viewer
+        viewer.scale = scale
+        self._fit_view()
+        viewer.dirty = True
+
+    def zoomOnPoint(self, x, y):
+        # TODO: check whether the picture is fitting in the image,
+        #       if this is the case, center it
+        pass
     
     def keyPressEvent(self, event):
         viewer = self.viewer
 
         c = event.key()
         if c == Qt.Key_Left:
-            viewer.pan_x += 50.0/viewer.scale
-            viewer.dirty = True
+            self.pan(dx=50.0/viewer.scale)
             viewer.repaint()
         elif c == Qt.Key_Right:
-            viewer.pan_x -= 50.0/viewer.scale
-            viewer.dirty = True
+            self.pan(dx=-50.0/viewer.scale)
             viewer.repaint()
         elif c == Qt.Key_Up:
-            viewer.pan_y += 50.0/viewer.scale
-            viewer.dirty = True
+            self.pan(dy=50.0/viewer.scale)
             viewer.repaint()
         elif c == Qt.Key_Down:
-            viewer.pan_y -= 50.0/viewer.scale
-            viewer.dirty = True
+            self.pan(dy=-50.0/viewer.scale)
             viewer.repaint()
         elif c == Qt.Key_Plus:
-            viewer.scale *= 2.0
-            viewer.dirty = True
+            self.zoom(viewer.scale*2.0)
             viewer.repaint()
         elif c == Qt.Key_Minus:
-            viewer.scale /= 2.0
-            viewer.dirty = True
+            self.zoom(viewer.scale/2.0)
             viewer.repaint()
         elif c == Qt.Key_Space:
             # Flip images
@@ -694,6 +779,8 @@ if __name__ == "__main__":
     import numpy.random as npr
     import os, os.path
     import sys
+
+    app = QApplication(sys.argv)
 
     if len(sys.argv) > 1:
         image = imread(sys.argv[1])
