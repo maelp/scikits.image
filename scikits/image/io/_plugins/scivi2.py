@@ -337,19 +337,11 @@ class ImageRenderer(object):
                 # if intersection.area() < thresh:
                 #     return render_all()
 
-                print "h=",h,"w=",w
                 out = np.empty((h,w,3), dtype=np.uint8)
 
                 a, b, s, t = intersection.coords() # in cache coords
                 c, d = a-i_x, b-i_y # in out coords
                 out[d:d+t, c:c+s, :] = self.cache[b:b+t, a:a+s, :]
-
-                print "prev=", prev.coords()
-                print "next=", next.coords()
-                print "intersect=",intersection.coords()
-                print "diffs:"
-                for diff in difference_list:
-                    print "  ",diff.coords()
 
                 for diff in difference_list:
                     a, b, s, t = diff.coords() # in cache coords
