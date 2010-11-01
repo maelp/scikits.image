@@ -14,9 +14,17 @@ from scikits.image.io._plugins import _scivi2_utils as utils
 # - force translations to be an integer number*zoom, thus we do not have subpixel
 #   translations when zooming in or out (this can be annoying when zooming out, often
 #   we will zoom back to 1.0X with a +0.5 translation)
-# - we should have fit zoom, zoom 1.0, reinit zoom,
+# - we should have fit zoom
 # - multicore if available (use _plugins.util)
 # - the application should have an F10 shortcut to display zoom/histo/etc controls
+#   additional widgets:
+#    - choose zoom (eg. Nearest, Bilinear etc)
+#    - choose level-lines display parameters
+#    - show histograms
+#    - save image to stack/file
+#    - a panning widget that display the currently viewed area of the complete
+#      image (eg. a grey widget that "represents the complete image", and a red
+#      rectangle inside that displays the currently displayed part of the image)
 #
 # LOW PRIORITY
 # - find some better way to tell the ImageRenderer to reset its state when
@@ -640,6 +648,7 @@ class Controls(QWidget):
                     viewer.pan_y = (widget_height-real_height)/scale/2
 
     def resizeEvent(self, event):
+        viewer = self.viewer
         self._fit_view()
         viewer.dirty = True
 

@@ -16,12 +16,15 @@ def configuration(parent_package='', top_path=None):
     cython(['median.pyx'], working_path=base_path)
     cython(['tvdenoise.pyx'], working_path=base_path)
     cython(['shock.pyx'], working_path=base_path)
+    cython(['nlmeans.pyx'], working_path=base_path)
 
     config.add_extension('median', sources=['median.c'],
                          include_dirs=[get_numpy_include_dirs()])
     config.add_extension('tvdenoise', sources=['tvdenoise.c'],
                          include_dirs=[get_numpy_include_dirs()])
     config.add_extension('shock', sources=['shock.c'],
+                         include_dirs=[get_numpy_include_dirs()])
+    config.add_extension('nlmeans', sources=['nlmeans.c'],
                          include_dirs=[get_numpy_include_dirs()])
 
     return config
