@@ -14,7 +14,6 @@ from scikits.image.io._plugins import _scivi2_utils as utils
 # - force translations to be an integer number*zoom, thus we do not have subpixel
 #   translations when zooming in or out (this can be annoying when zooming out, often
 #   we will zoom back to 1.0X with a +0.5 translation)
-# - when zooming out and the image fits the view, we should center it
 # - we should have fit zoom, zoom 1.0, reinit zoom,
 # - multicore if available (use _plugins.util)
 # - the application should have an F10 shortcut to display zoom/histo/etc controls
@@ -645,8 +644,6 @@ class Controls(QWidget):
         viewer.dirty = True
 
     def pan(self, dx=0.0, dy=0.0):
-        # TODO: check whether the picture is fitting in the image,
-        #       if this is the case, center it
         viewer = self.viewer
         viewer.pan_x += dx
         viewer.pan_y += dy
@@ -659,11 +656,12 @@ class Controls(QWidget):
         self._fit_view()
         viewer.dirty = True
 
-    def zoomOnPoint(self, x, y):
-        # TODO: check whether the picture is fitting in the image,
-        #       if this is the case, center it
+    def zoom_fit(self):
+        # self.zoom_rect(image_rect())
         pass
-    
+    def zoom_rect(self, rect):
+        pass
+
     def keyPressEvent(self, event):
         viewer = self.viewer
 
@@ -701,6 +699,9 @@ class Controls(QWidget):
             viewer.repaint()
         elif c == Qt.Key_L:
             # Show level-lines
+            # TODO
+            # parameters for level-lines should be in extra controls accessible
+            # with F10
             viewer.image_renderer.show_level_lines = not viewer.image_renderer.show_level_lines
             viewer.image_renderer.state = None
             if self.flip:
@@ -710,6 +711,9 @@ class Controls(QWidget):
             viewer.repaint()
         elif c == Qt.Key_B:
             # Change interpolation
+            # TODO
+            # This should be a menu accessible with F10 (show some additional
+            # menus)
             cur_zoom = self.zooms[0]
             self.zooms = self.zooms[1:]
             self.zooms.append(cur_zoom)
@@ -720,6 +724,10 @@ class Controls(QWidget):
                 self.flip.zoom = self.zooms[0]
                 self.flip.state = None
             viewer.dirty = True
+            viewer.repaint()
+        elif c == Qt.Key_0:
+            # Reinit zoom
+            self.zoom(1.0)
             viewer.repaint()
 
 class AdvancedImageViewerApp(QMainWindow):
