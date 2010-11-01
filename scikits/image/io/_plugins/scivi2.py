@@ -344,26 +344,24 @@ class ImageRenderer(object):
                 # subimage at (i_x, i_y) of size (w, h)
                 i_px, i_py = 0, 0
                 pw, ph = self.width, self.height
-                # Top-left and bottom-right coords of the intersection rectangle
-                i_x0 = max(i_px, i_x)
-                i_y0 = max(i_py, i_y)
-                i_x1 = min(i_px+pw-1, i_x+w-1)
-                i_y1 = min(i_py+ph-1, i_y+h-1)
-                if i_x0 <= i_x1 or i_y0 <= i_y1:
-                    # non-empty intersection
-                    # dimension of the intersecting rectangle
-                    cw = i_x1-i_x0+1
-                    ch = i_y1-i_y0+1
+                prev = utils.IntBox(i_px, i_py, pw, ph)
+                next = utils.IntBox(i_x, i_y, w, h)
 
-                    for plane in self.planes:
-                        new_plane = np.ones((h,w), dtype=np.float32)*bgcolor
-                        new_plane[i_y0-i_y:i_y0-i_y+ch, i_x0-i_x:i_x0-i_x+cw] = \
-                                plane[i_y0-i_py:i_y0-i_py+ch, i_x0-i_px:i_x0-i_px+cw]
-                        zoomed_planes.append(new_plane)
-                else:
+                intersection = next.intersection(prev)
+                if intersection.is_empty():
                     # empty intersection
                     for plane in self.planes:
                         new_plane = np.ones((h,w), dtype=np.float32)*bgcolor
+                        zoomed_planes.append(new_plane)
+                else:
+                    # non-empty intersection
+                    # dimension of the intersecting rectangle
+                    a, b, cw, ch = intersection.coords()
+                    x0, y0 = a-i_x, b-i_y # in new_plane coords
+                    for plane in self.planes:
+                        new_plane = np.ones((h,w), dtype=np.float32)*bgcolor
+                        new_plane[y0:y0+ch, x0:x0+cw] = \
+                                plane[b:b+ch, a:a+cw]
                         zoomed_planes.append(new_plane)
             else:
                 for plane in self.planes:
@@ -643,27 +641,31 @@ class Controls(QWidget):
             self.close()
 
 class AdvancedImageViewerApp(QMainWindow):
-    def __init__(self, im, flip=None, mgr=None, parent=None):
-        super(AdvancedImageViewerApp, self).__init__(parent)
+    def __init__(self, im, flip=None, mgr=None):
+        super(AdvancedImageViewerApp, self).__init__()
         self.mgr = mgr
         if mgr is not None:
             self.mgr.add_window(self)
 
+        # Basic image rendering
         im_renderer = ImageRenderer()
         im_renderer.set_image(im)
 
         if flip is not None:
+            # Basic image rendering
             flip_renderer = ImageRenderer()
             flip_renderer.set_image(flip)
         else:
             flip_renderer = None
 
+        # Viewer handling mouse
         viewer = MouseImageViewer()
 
+        # Advanced controls
         controls = Controls()
         controls.setViewer(viewer)
         controls.setImageRenderer(im_renderer, flip=flip_renderer)
-        controls.show()
+        self.setCentralWidget(controls)
 
     def closeEvent(self, event):
         # Allow window to be destroyed by removing any
@@ -672,6 +674,7 @@ class AdvancedImageViewerApp(QMainWindow):
             self.mgr.remove_window(self)
 
 def _simple_imshow(im, flip=None, mgr=None):
+    # TODO: simpler imshow, without complete GUI
     return _advanced_imshow(im, flip)
 
 def _advanced_imshow(im, flip=None, mgr=None):
@@ -691,11 +694,11 @@ if __name__ == "__main__":
         import scipy
         image = scipy.lena()
 
-    image_noise = image + npr.randn(image.size).reshape(image.shape)*17
-    image_noise = image_noise.clip(0,255)
-    image_noise = image_noise.astype(np.uint8)
+    flip = None
+    if len(sys.argv) > 2:
+        flip = imread(sys.argv[2])
 
-    viewer = _advanced_imshow(image, flip=image_noise, mgr=None)
+    viewer = _advanced_imshow(image, flip=flip, mgr=None)
     viewer.show()
 
     sys.exit(app.exec_())

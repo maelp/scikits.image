@@ -61,6 +61,8 @@ class ImageWindow(QMainWindow):
         QMainWindow.__init__(self)
         self.setWindowTitle('scikits.image')
         self.mgr = mgr
+        self.mgr.add_window(self)
+
         self.main_widget = QWidget()
         self.layout = QtGui.QGridLayout(self.main_widget)
         self.setCentralWidget(self.main_widget)
@@ -68,7 +70,6 @@ class ImageWindow(QMainWindow):
         self.label = ImageLabel(self, arr)
         self.layout.addWidget(self.label, 0, 0)
         self.layout.addLayout
-        self.mgr.add_window(self)
         self.main_widget.show()
 
     def closeEvent(self, event):
