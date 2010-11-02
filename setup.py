@@ -87,6 +87,7 @@ if __name__ == "__main__":
 
         entry_points={
             'console_scripts': [
-                'scivi = scikits.image.scripts.scivi:main']
+                'scivi = scikits.image.scripts.scivi:main',
+                'scivi2 = scikits.image.scripts.scivi2:main']
             },
         )
