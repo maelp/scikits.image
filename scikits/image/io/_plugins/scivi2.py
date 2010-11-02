@@ -3,6 +3,7 @@
 
 from PyQt4.QtGui import *
 from PyQt4.QtCore import *
+import sip
 
 import numpy as np
 
@@ -76,6 +77,10 @@ from scikits.image.io._plugins import _scivi2_utils as utils
 #  - image flip
 #  - level lines (one level, several lines, upper/lower sets, range)
 #  - configurable ImageRenderer
+
+################################################################################
+# Zoom classes
+################################################################################
 
 # Utility function for zoom windows
 def _extract_subwindow_with_border(im, x, y, w, h, scale, border=1):
@@ -198,6 +203,10 @@ class SplineZoom(object):
           out: zoomed image
         """
         return zoom.fzoom(im, self.order, x, y, w, h, scale, bgcolor)
+
+################################################################################
+# ImageRenderer
+################################################################################
 
 # Utility function that converts an image to float32 when required
 def _ensures_float32(im):
@@ -479,7 +488,14 @@ class ImageRenderer(object):
         self.state = None
         self.cache = None
 
+################################################################################
+# ImageViewer
+################################################################################
+
 class ImageViewer(QWidget):
+    """
+    Simple image viewer widget, that uses an ImageRenderer to display its state
+    """
     def __init__(self, parent=None):
         super(ImageViewer, self).__init__(parent)
         self.setBackgroundColor(QPalette.Window)
@@ -573,7 +589,14 @@ class ImageViewer(QWidget):
         else:
             return QSize(100, 100)
 
+################################################################################
+# MouseImageViewer
+################################################################################
+
 class MouseImageViewer(ImageViewer):
+    """
+    This superclass of ImageViewer handles mouse clicks if required
+    """
     def mousePressEvent(self, event):
         wx, wy = event.x(), event.y()
         btn = event.button()
@@ -596,28 +619,83 @@ class MouseImageViewer(ImageViewer):
             self.dirty = True
             self.repaint()
 
+################################################################################
+# Controls
+################################################################################
+
 class Controls(QWidget):
+    """
+    Widget that has a viewer, handle some keyboard actions, and is able to
+    flip between two images
+    """
     def __init__(self, parent=None):
         super(Controls, self).__init__(parent)
         self.viewer = None
         self.flip = None
+
+        self.layout_mode = "image"
 
         self.zooms = [NearestZoom(), BilinearZoom(), BicubicZoom()]
         for order in [3,5,7,9,11]:
             self.zooms.append(SplineZoom(order))
 
     def setViewer(self, viewer):
-        layout = QVBoxLayout()
-        layout.addWidget(viewer)
         self.viewer = viewer
-        # TODO: should respond to viewChanged signal of self.viewer,
-        # in order to force centering the view if it fits the viewer
-        self.setLayout(layout)
+        self.setLayoutMode(self.layout_mode)
 
     def setImageRenderer(self, image_renderer, flip=None):
         if self.viewer is not None:
             self.viewer.setImageRenderer(image_renderer)
             self.flip = flip
+
+    def toggleLayoutMode(self):
+        if self.layout_mode == "image":
+            self.setLayoutMode("controls")
+        else:
+            self.setLayoutMode("image")
+
+    def setLayoutMode(self, layout_mode):
+        assert layout_mode == "image" or layout_mode == "controls"
+        self.layout_mode = layout_mode
+
+        def deleteLayout(layout):
+            if layout is not None:
+                while layout.count():
+                    item = layout.takeAt(0)
+                    widget = item.widget()
+                    if widget is not None:
+                        widget.deleteLater()
+                    else:
+                        deleteLayout(item.layout())
+            sip.delete(layout)
+
+        layout = self.layout()
+        if layout is not None:
+            layout.removeWidget(self.viewer)
+            deleteLayout(layout)
+
+        layout = QVBoxLayout()
+        if self.viewer is not None:
+            layout.addWidget(self.viewer)
+            if self.layout_mode == "controls":
+                btnZoomNearest = QPushButton("Zoom Nearest")
+                btnZoomNearest.clicked.connect(self.btnZoomNearest_clicked)
+                layout.addWidget(btnZoomNearest)
+        # TODO: should respond to viewChanged signal of self.viewer,
+        # in order to force centering the view if it fits the viewer
+        self.setLayout(layout)
+        layout.update()
+        self.updateGeometry()
+        print self.viewer.geometry()
+
+    def sizeHint(self):
+        if self.layout() is not None:
+            return self.layout().geometry().size()
+        else:
+            return QSize(-1, -1)
+
+    def btnZoomNearest_clicked(self, event):
+        print "ok  "
 
     def _is_view_fitting(self):
         if self.viewer is not None:
@@ -740,8 +818,17 @@ class Controls(QWidget):
             # Reinit zoom
             self.zoom(1.0)
             viewer.repaint()
+        elif c == Qt.Key_F10:
+            self.toggleLayoutMode()
+
+################################################################################
+# AdvancedImageViewerApp
+################################################################################
 
 class AdvancedImageViewerApp(QMainWindow):
+    """
+    This is the application that is displayed when using imshow
+    """
     def __init__(self, im, flip=None, mgr=None):
         super(AdvancedImageViewerApp, self).__init__()
         self.mgr = mgr
@@ -763,7 +850,7 @@ class AdvancedImageViewerApp(QMainWindow):
         viewer = MouseImageViewer()
 
         # Advanced controls
-        controls = Controls()
+        self.controls = controls = Controls()
         controls.setViewer(viewer)
         controls.setImageRenderer(im_renderer, flip=flip_renderer)
         self.setCentralWidget(controls)
@@ -783,6 +870,9 @@ class AdvancedImageViewerApp(QMainWindow):
         # references to it
         if self.mgr is not None:
             self.mgr.remove_window(self)
+    
+    def sizeHint(self):
+        return self.controls.sizeHint()
 
 def _simple_imshow(im, flip=None, mgr=None):
     # TODO: simpler imshow, without complete GUI
