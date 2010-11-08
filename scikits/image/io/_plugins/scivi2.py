@@ -12,13 +12,13 @@ from scikits.image.io._plugins import _scivi2_utils as utils
 
 # TODO
 # HIGH PRIORITY
-# - there is a bug when flipping images, sometimes the view are uncorrelated (maybe
-#   after zooming?), should try to investigate this bug
 # - force translations to be an integer number*zoom, thus we do not have subpixel
 #   translations when zooming in or out (this can be annoying when zooming out, often
 #   we will zoom back to 1.0X with a +0.5 translation)
 # - we should have fit zoom
 # - multicore if available (use _plugins.util)
+# - ctrl++/- should zoom in/out and resize the window to fit the image (if it is
+#   smaller than the screen)
 # - the application should have an F10 shortcut to display zoom/histo/etc controls
 #   additional widgets:
 #    - choose zoom (eg. Nearest, Bilinear etc)
@@ -28,6 +28,10 @@ from scikits.image.io._plugins import _scivi2_utils as utils
 #    - a panning widget that display the currently viewed area of the complete
 #      image (eg. a grey widget that "represents the complete image", and a red
 #      rectangle inside that displays the currently displayed part of the image)
+# - closing main window / pressing Q should close all windows (even when the
+#   controls window is displayed)
+# - if it is too complicated to have a correct widget resizing when displaying the
+#   controls we might also display a popup window with the controls
 #
 # LOW PRIORITY
 # - find some better way to tell the ImageRenderer to reset its state when
@@ -623,6 +627,45 @@ class MouseImageViewer(ImageViewer):
 # Controls
 ################################################################################
 
+class ControlWindow(QWidget):
+    def __init__(self, controls, parent=None):
+        super(ControlWindow, self).__init__(parent)
+        self.controls = controls
+
+        self.zooms = {
+                "Nearest": NearestZoom(),
+                "Bilinear": BilinearZoom(),
+                "Bicubic": BicubicZoom(),
+                }
+        for order in [3,5,7,9,11]:
+            self.zooms["Spline "+str(order)] = SplineZoom(order)
+
+        layout = QVBoxLayout()
+        comboZoom = QComboBox()
+
+        ordered_zooms = ["Nearest", "Bilinear", "Bicubic"]
+        for order in [3,5,7,9,11]:
+            ordered_zooms.append("Spline "+str(order))
+        comboZoom.addItems(QStringList(ordered_zooms))
+        comboZoom.currentIndexChanged[str].connect(self.set_zoom)
+        _layout = QHBoxLayout()
+        _layout.addWidget(QLabel("Zoom:"))
+        _layout.addWidget(comboZoom)
+        _widget = QWidget()
+        _widget.setLayout(_layout)
+        layout.addWidget(_widget)
+
+        self.setLayout(layout)
+
+    def set_zoom(self, str_zoom):
+        zoom = self.zooms[str(str_zoom)]
+        self.controls.set_zoom(zoom)
+
+    def keyPressEvent(self, event):
+        c = event.key()
+        if c == Qt.Key_F10:
+            self.hide()
+
 class Controls(QWidget):
     """
     Widget that has a viewer, handle some keyboard actions, and is able to
@@ -633,69 +676,41 @@ class Controls(QWidget):
         self.viewer = None
         self.flip = None
 
-        self.layout_mode = "image"
+        #self.layout_mode = "image"
 
-        self.zooms = [NearestZoom(), BilinearZoom(), BicubicZoom()]
-        for order in [3,5,7,9,11]:
-            self.zooms.append(SplineZoom(order))
+        self.control_window = ControlWindow(self)
 
     def setViewer(self, viewer):
         self.viewer = viewer
-        self.setLayoutMode(self.layout_mode)
+        #self.setLayoutMode(self.layout_mode)
+        layout = QVBoxLayout()
+        layout.addWidget(self.viewer)
+        self.setLayout(layout)
 
     def setImageRenderer(self, image_renderer, flip=None):
         if self.viewer is not None:
             self.viewer.setImageRenderer(image_renderer)
             self.flip = flip
 
-    def toggleLayoutMode(self):
-        if self.layout_mode == "image":
-            self.setLayoutMode("controls")
+    def showControlWindow(self):
+        self.control_window.show()
+
+    def toggleControlWindow(self):
+        if self.control_window.isVisible():
+            self.control_window.hide()
         else:
-            self.setLayoutMode("image")
+            self.control_window.show()
 
-    def setLayoutMode(self, layout_mode):
-        assert layout_mode == "image" or layout_mode == "controls"
-        self.layout_mode = layout_mode
-
-        def deleteLayout(layout):
-            if layout is not None:
-                while layout.count():
-                    item = layout.takeAt(0)
-                    widget = item.widget()
-                    if widget is not None:
-                        widget.deleteLater()
-                    else:
-                        deleteLayout(item.layout())
-            sip.delete(layout)
-
-        layout = self.layout()
-        if layout is not None:
-            layout.removeWidget(self.viewer)
-            deleteLayout(layout)
-
-        layout = QVBoxLayout()
-        if self.viewer is not None:
-            layout.addWidget(self.viewer)
-            if self.layout_mode == "controls":
-                btnZoomNearest = QPushButton("Zoom Nearest")
-                btnZoomNearest.clicked.connect(self.btnZoomNearest_clicked)
-                layout.addWidget(btnZoomNearest)
-        # TODO: should respond to viewChanged signal of self.viewer,
-        # in order to force centering the view if it fits the viewer
-        self.setLayout(layout)
-        layout.update()
-        self.updateGeometry()
-        print self.viewer.geometry()
-
-    def sizeHint(self):
-        if self.layout() is not None:
-            return self.layout().geometry().size()
-        else:
-            return QSize(-1, -1)
-
-    def btnZoomNearest_clicked(self, event):
-        print "ok  "
+    def set_zoom(self, zoom):
+        viewer = self.viewer
+        print str(zoom)
+        viewer.image_renderer.zoom = zoom
+        viewer.image_renderer.state = None
+        if self.flip:
+            self.flip.zoom = self.zooms[0]
+            self.flip.state = None
+        viewer.dirty = True
+        viewer.repaint()
 
     def _is_view_fitting(self):
         if self.viewer is not None:
@@ -798,28 +813,12 @@ class Controls(QWidget):
                 self.flip.state = None
             viewer.dirty = True
             viewer.repaint()
-        elif c == Qt.Key_B:
-            # Change interpolation
-            # TODO
-            # This should be a menu accessible with F10 (show some additional
-            # menus)
-            cur_zoom = self.zooms[0]
-            self.zooms = self.zooms[1:]
-            self.zooms.append(cur_zoom)
-            print str(self.zooms[0])
-            viewer.image_renderer.zoom = self.zooms[0]
-            viewer.image_renderer.state = None
-            if self.flip:
-                self.flip.zoom = self.zooms[0]
-                self.flip.state = None
-            viewer.dirty = True
-            viewer.repaint()
         elif c == Qt.Key_0:
             # Reinit zoom
             self.zoom(1.0)
             viewer.repaint()
         elif c == Qt.Key_F10:
-            self.toggleLayoutMode()
+            self.toggleControlWindow()
 
 ################################################################################
 # AdvancedImageViewerApp
